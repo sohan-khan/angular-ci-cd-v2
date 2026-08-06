@@ -1,0 +1,89 @@
+name: Angular CI/CD to IIS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Angular Application
+        run: |
+          node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production
+
+      - name: Verify Build Output
+        run: |
+          echo "Listing dist folder..."
+          ls -R dist
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-dist
+          path: dist/my-angular-ci-cd/browser
+          retention-days: 2
+
+  deploy:
+    needs: build
+    runs-on:
+      - self-hosted
+      - Windows
+
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: angular-dist
+          path: C:\deploy\angular-temp
+
+      - name: Stop IIS Website
+        shell: powershell
+        run: |
+          Import-Module WebAdministration
+          Stop-WebSite -Name "MyAngularApp"
+
+      - name: Deploy Application to IIS
+        shell: powershell
+        run: |
+          $source = "C:\deploy\angular-temp"
+          $destination = "C:\inetpub\wwwroot\ANGULAR CI-CD\angular ci-cd"
+
+          if (!(Test-Path $destination)) {
+              New-Item -ItemType Directory -Path $destination -Force
+          }
+
+          # Remove old files
+          Get-ChildItem $destination -Recurse -Force | Remove-Item -Recurse -Force
+
+          # Copy new build
+          Copy-Item "$source\*" `
+              -Destination $destination `
+              -Recurse `
+              -Force
+
+      - name: Start IIS Website
+        shell: powershell
+        run: |
+          Import-Module WebAdministration
+          Start-WebSite -Name "MyAngularApp"
+
+      - name: Cleanup Temporary Files
+        shell: powershell
+        run: |
+          Remove-Item "C:\deploy\angular-temp" -Recurse -Force -ErrorAction SilentlyContinue

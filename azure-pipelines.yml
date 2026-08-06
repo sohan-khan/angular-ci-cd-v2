@@ -1,0 +1,66 @@
+trigger:
+  - main
+
+pool: 'Default'
+
+variables:
+  siteName: 'MyAngularApp'
+  sitePath: 'C:\inetpub\wwwroot\MyAngularApp'
+  tempPath: 'C:\deploy\angular-temp'
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+    displayName: 'Install Node.js'
+
+  - script: |
+      npm ci
+      node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production
+    displayName: 'Build Angular app'
+
+  - task: PowerShell@2
+    displayName: 'Stop IIS site'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Import-Module WebAdministration
+        if (Get-Website -Name "$(siteName)" -ErrorAction SilentlyContinue) {
+          Stop-WebSite -Name "$(siteName)"
+        } else {
+          Write-Host "Site '$(siteName)' does not exist yet, skipping stop"
+        }
+
+  - task: PowerShell@2
+    displayName: 'Clear old files (preserve web.config)'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $dest = "$(sitePath)"
+        if (Test-Path $dest) {
+          Get-ChildItem -Path $dest -Recurse -Force |
+            Where-Object { $_.Name -ne "web.config" } |
+            Remove-Item -Recurse -Force
+        } else {
+          New-Item -Path $dest -ItemType Directory -Force
+        }
+
+  - task: CopyFiles@2
+    displayName: 'Copy new build to IIS folder'
+    inputs:
+      SourceFolder: '$(System.DefaultWorkingDirectory)/dist/my-angular-ci-cd/browser'
+      Contents: '**'
+      TargetFolder: '$(sitePath)'
+      OverWrite: true
+
+  - task: PowerShell@2
+    displayName: 'Ensure IIS site exists, then start it'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Import-Module WebAdministration
+        if (-not (Get-Website -Name "$(siteName)" -ErrorAction SilentlyContinue)) {
+          New-Item "IIS:\Sites\$(siteName)" -bindings @{protocol="http";bindingInformation="*:8081:"} -physicalPath "$(sitePath)"
+          Write-Host "Created new IIS site '$(siteName)' on port 8081"
+        }
+        Start-WebSite -Name "$(siteName)"
