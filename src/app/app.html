@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angular Landing Page</title>
+
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+        }
+
+        body{
+            background:#f4f8fc;
+            color:#333;
+        }
+
+        header{
+            background:#0078D4;
+            color:#fff;
+            padding:18px 60px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            box-shadow:0 2px 8px rgba(0,0,0,.15);
+        }
+
+        header h2{
+            font-weight:600;
+        }
+
+        nav a{
+            color:white;
+            text-decoration:none;
+            margin-left:25px;
+            transition:.3s;
+        }
+
+        nav a:hover{
+            opacity:.8;
+        }
+
+        .hero{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:80px 8%;
+            flex-wrap:wrap;
+        }
+
+        .hero-text{
+            max-width:550px;
+        }
+
+        .hero-text h1{
+            font-size:48px;
+            color:#0078D4;
+            margin-bottom:20px;
+        }
+
+        .hero-text p{
+            font-size:18px;
+            line-height:1.7;
+            color:#555;
+            margin-bottom:35px;
+        }
+
+        .buttons{
+            display:flex;
+            gap:15px;
+        }
+
+        .btn{
+            padding:14px 28px;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size:16px;
+            transition:.3s;
+        }
+
+        .primary{
+            background:#0078D4;
+            color:white;
+        }
+
+        .primary:hover{
+            background:#005fa3;
+        }
+
+        .secondary{
+            background:white;
+            color:#0078D4;
+            border:2px solid #0078D4;
+        }
+
+        .secondary:hover{
+            background:#0078D4;
+            color:white;
+        }
+
+        .hero-image{
+            width:450px;
+            max-width:100%;
+        }
+
+        .hero-image img{
+            width:100%;
+        }
+
+        .features{
+            padding:70px 8%;
+            background:white;
+        }
+
+        .features h2{
+            text-align:center;
+            color:#0078D4;
+            margin-bottom:50px;
+            font-size:34px;
+        }
+
+        .cards{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+            gap:25px;
+        }
+
+        .card{
+            background:#f7fbff;
+            border-radius:10px;
+            padding:30px;
+            text-align:center;
+            transition:.3s;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
+
+        .card:hover{
+            transform:translateY(-6px);
+        }
+
+        .card h3{
+            color:#0078D4;
+            margin:15px 0;
+        }
+
+        .card p{
+            color:#666;
+            line-height:1.6;
+        }
+
+        footer{
+            background:#0078D4;
+            color:white;
+            text-align:center;
+            padding:20px;
+            margin-top:60px;
+        }
+
+        @media(max-width:768px){
+
+            header{
+                flex-direction:column;
+                gap:15px;
+            }
+
+            .hero{
+                text-align:center;
+                justify-content:center;
+            }
+
+            .buttons{
+                justify-content:center;
+                flex-wrap:wrap;
+            }
+
+            .hero-text h1{
+                font-size:36px;
+            }
+
+            .hero-image{
+                margin-top:40px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+
+<header>
+    <h2>My Angular App</h2>
+
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Features</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+    </nav>
+</header>
+
+<section class="hero">
+
+    <div class="hero-text">
+        <h1>Build Faster with Angular</h1>
+
+        <p>
+            A modern Angular application deployed through Azure DevOps CI/CD.
+            Deliver high-quality software faster with automated builds,
+            testing, and deployment.
+        </p>
+
+        <div class="buttons">
+            <button class="btn primary">Get Started</button>
+            <button class="btn secondary">Learn More</button>
+        </div>
+    </div>
+
+    <div class="hero-image">
+        <img src="https://cdn-icons-png.flaticon.com/512/919/919851.png"
+             alt="Angular Logo">
+    </div>
+
+</section>
+
+<section class="features">
+
+    <h2>Key Features</h2>
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>⚡ Fast Development</h3>
+            <p>
+                Create scalable applications with Angular's powerful framework.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>🚀 Azure DevOps</h3>
+            <p>
+                Automate builds, testing, and deployments with CI/CD pipelines.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>🔒 Secure</h3>
+            <p>
+                Enterprise-grade authentication, monitoring, and deployment.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+<footer>
+    © 2026 My Angular Application | Powered by Angular & Azure DevOps
+</footer>
+
+</body>
+</html>
