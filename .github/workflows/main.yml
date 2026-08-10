@@ -62,7 +62,7 @@ jobs:
         shell: powershell
         run: |
           $source = "C:\deploy\angular-temp"
-          $destination = "C:\inetpub\wwwroot\ANGULAR CI-CD\angular ci-cd"
+          $destination = "C:\inetpub\wwwroot\myangularapp"
 
           if (!(Test-Path $destination)) {
               New-Item -ItemType Directory -Path $destination -Force
