@@ -19,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Angular Application
-        run: node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production
+      - name: Build Angular app
+        run: node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production # change according to your project
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
