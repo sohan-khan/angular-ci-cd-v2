@@ -1,7 +1,7 @@
 name: Angular CI/CD to IIS
 
 on:
-  workflow_dispatch:   # lets you trigger it manually from the Actions tab too
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,72 +13,89 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # change according to your project
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Angular app
-        run: node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production # change according to your project
+      - name: Build Angular Application
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: npx ng build --configuration production
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: angular-dist
-          path: dist/my-angular-ci-cd/browser   # change according to your project
+          path: dist/my-angular-ci-cd/browser
           retention-days: 2
 
   deploy:
     needs: build
-    runs-on: [self-hosted, Windows]   # this job runs ON your IIS Windows Server
+    runs-on: [self-hosted, Windows]
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: angular-dist
           path: C:\deploy\angular-temp
-          
+
       - name: Backup Current Deployment
+        shell: powershell
         run: |
-           # Saves current live app before overwriting, so we can roll back if new version fails
-           $BackupRoot = "C:\inetpub\wwwroot\myangularapp"   # <-- change to your actual backup path
-           $TimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
-           $BackupFolder = Join-Path $BackupRoot $TimeStamp
-
-           New-Item -ItemType Directory -Force -Path $BackupFolder | Out-Null
-
-           if ((Test-Path "C:\inetpub\wwwroot\myangularapp") -and (Get-ChildItem "C:\inetpub\wwwroot\myangularapp" -ErrorAction SilentlyContinue)) {
-                Copy-Item "C:\inetpub\wwwroot\myangularapp" $BackupFolder -Recurse -Force
-                Write-Host "Backup created at $BackupFolder"
-            } else {
-                Write-Host "Nothing to back up (first deployment)."
-            }
+          $TargetFolder = "C:\inetpub\wwwroot\myangularapp"
+          if (Test-Path $TargetFolder) {
+              $TimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
+              $BackupFolder = "C:\inetpub\backups\myangularapp\$TimeStamp"
+              New-Item -ItemType Directory -Force -Path $BackupFolder | Out-Null
+              Copy-Item "$TargetFolder\*" $BackupFolder -Recurse -Force
+              Write-Host "Backup created at $BackupFolder"
+          } else {
+              Write-Host "Nothing to back up (first deployment)."
+          }
 
       - name: Stop IIS site
         shell: powershell
         run: |
           Import-Module WebAdministration
-          Stop-WebSite -Name "Default Web Site"   # <-- change to your actual IIS site name
+          $siteName = "Default Web Site"
+          $state = (Get-WebsiteState -Name $siteName -ErrorAction SilentlyContinue).Value
+          if ($state -and $state -ne "Stopped") {
+              Write-Host "Stopping Site: $siteName"
+              Stop-WebSite -Name $siteName
+          } else {
+              Write-Host "Site '$siteName' is already stopped."
+          }
 
       - name: Clear old files and deploy new build
         shell: powershell
         run: |
-          $dest = "C:\inetpub\wwwroot\myangularapp"   # <-- change to your actual site path
+          $dest = "C:\inetpub\wwwroot\myangularapp"
+          $source = "C:\deploy\angular-temp"
+
           if (Test-Path $dest) {
-            Get-ChildItem -Path $dest -Recurse -Force |
-              Where-Object { $_.Name -ne "web.config" } |
-              Remove-Item -Recurse -Force
+              Get-ChildItem -Path $dest -Recurse -Force |
+                Where-Object { $_.Name -ne "web.config" } |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
           } else {
-            New-Item -Path $dest -ItemType Directory
+              New-Item -Path $dest -ItemType Directory -Force
           }
-          Copy-Item -Path "C:\deploy\angular-temp\*" -Destination $dest -Recurse -Force -Exclude "web.config"
+
+          Copy-Item -Path "$source\*" -Destination $dest -Recurse -Force -Exclude "web.config"
 
       - name: Start IIS site
         shell: powershell
         run: |
           Import-Module WebAdministration
-          Start-WebSite -Name "Default Web Site"   # <-- change to your actual IIS site name
+          $siteName = "Default Web Site"
+          $state = (Get-WebsiteState -Name $siteName -ErrorAction SilentlyContinue).Value
+          if ($state -ne "Started") {
+              Write-Host "Starting Site: $siteName"
+              Start-WebSite -Name $siteName
+          } else {
+              Write-Host "Site '$siteName' is already running."
+          }
 
       - name: Clean up temp folder
         shell: powershell
