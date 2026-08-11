@@ -1,89 +1,85 @@
 name: Angular CI/CD to IIS
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch:   # lets you trigger it manually from the Actions tab too
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: '20' # change according to your project
+          cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build Angular Application
-        run: |
-          node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --configuration production
+      - name: Build Angular app
+        run: node --max_old_space_size=4096 ./node_modules/@angular/cli/bin/ng build --prod # change according to your project
 
-      - name: Verify Build Output
-        run: |
-          echo "Listing dist folder..."
-          ls -R dist
-
-      - name: Upload Build Artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: angular-dist
-          path: dist/my-angular-ci-cd/browser
+          path: dist/my-angular-ci-cd/browser   # change according to your project
           retention-days: 2
 
   deploy:
     needs: build
-    runs-on:
-      - self-hosted
-      - Windows
-
+    runs-on: [self-hosted, Windows]   # this job runs ON your IIS Windows Server
     steps:
-      - name: Download Build Artifact
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: angular-dist
           path: C:\deploy\angular-temp
+          
+      - name: Backup Current Deployment
+        run: |
+           # Saves current live app before overwriting, so we can roll back if new version fails
+           $BackupRoot = "C:\inetpub\wwwroot\myangularapp"   # <-- change to your actual backup path
+           $TimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
+           $BackupFolder = Join-Path $BackupRoot $TimeStamp
 
-      - name: Stop IIS Website
+           New-Item -ItemType Directory -Force -Path $BackupFolder | Out-Null
+
+           if ((Test-Path "C:\inetpub\wwwroot\myangularapp") -and (Get-ChildItem "C:\inetpub\wwwroot\myangularapp" -ErrorAction SilentlyContinue)) {
+                Copy-Item "C:\inetpub\wwwroot\myangularapp" $BackupFolder -Recurse -Force
+                Write-Host "Backup created at $BackupFolder"
+            } else {
+                Write-Host "Nothing to back up (first deployment)."
+            }
+
+      - name: Stop IIS site
         shell: powershell
         run: |
           Import-Module WebAdministration
-          Stop-WebSite -Name "MyAngularApp"
+          Stop-WebSite -Name "Default Web Site"   # <-- change to your actual IIS site name
 
-      - name: Deploy Application to IIS
+      - name: Clear old files and deploy new build
         shell: powershell
         run: |
-          $source = "C:\deploy\angular-temp"
-          $destination = "C:\inetpub\wwwroot\myangularapp"
-
-          if (!(Test-Path $destination)) {
-              New-Item -ItemType Directory -Path $destination -Force
+          $dest = "C:\inetpub\wwwroot\myangularapp"   # <-- change to your actual site path
+          if (Test-Path $dest) {
+            Get-ChildItem -Path $dest -Recurse -Force |
+              Where-Object { $_.Name -ne "web.config" } |
+              Remove-Item -Recurse -Force
+          } else {
+            New-Item -Path $dest -ItemType Directory
           }
+          Copy-Item -Path "C:\deploy\angular-temp\*" -Destination $dest -Recurse -Force -Exclude "web.config"
 
-          # Remove old files
-          Get-ChildItem $destination -Recurse -Force | Remove-Item -Recurse -Force
-
-          # Copy new build
-          Copy-Item "$source\*" `
-              -Destination $destination `
-              -Recurse `
-              -Force
-
-      - name: Start IIS Website
+      - name: Start IIS site
         shell: powershell
         run: |
           Import-Module WebAdministration
-          Start-WebSite -Name "MyAngularApp"
+          Start-WebSite -Name "Default Web Site"   # <-- change to your actual IIS site name
 
-      - name: Cleanup Temporary Files
+      - name: Clean up temp folder
         shell: powershell
-        run: |
-          Remove-Item "C:\deploy\angular-temp" -Recurse -Force -ErrorAction SilentlyContinue
+        run: Remove-Item -Path "C:\deploy\angular-temp" -Recurse -Force -ErrorAction SilentlyContinue
